@@ -1,0 +1,24 @@
+<div style="border:1px solid #ddd;padding:10px;margin-bottom:10px">
+  <h3>Folio {{ o.folio }}</h3>
+  <p>Estado: <b>{{ o.get_estado_display }}</b></p>
+  <ul>
+    {% for it in o.items.all %}
+      <li>{{ it.cantidad }} × {{ it.producto.nombre }}</li>
+    {% endfor %}
+  </ul>
+  <div>
+    {% if o.estado == "EN_COLA" %}
+      <a class="btn" 
+         hx-get="{% url 'kitchen_estado' o.id 'EN_PREPARACION' %}" 
+         hx-target="#orden-{{ o.id }}" hx-swap="outerHTML">Iniciar</a>
+    {% elif o.estado == "EN_PREPARACION" %}
+      <a class="btn"
+         hx-get="{% url 'kitchen_estado' o.id 'LISTA' %}"
+         hx-target="#orden-{{ o.id }}" hx-swap="outerHTML">Marcar listo</a>
+    {% elif o.estado == "LISTA" %}
+      <a class="btn primary"
+         hx-get="{% url 'kitchen_estado' o.id 'ENTREGADA' %}"
+         hx-target="#orden-{{ o.id }}" hx-swap="outerHTML">Entregar</a>
+    {% endif %}
+  </div>
+</div>

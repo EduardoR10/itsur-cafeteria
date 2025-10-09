@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Cocina - ITSUR Cafetería{% endblock %}
+{% block content %}
+<h2>Tablero de cocina</h2>
+<div class="row">
+  {% for o in ordenes %}
+    <div class="col" id="orden-{{ o.id }}">
+      {% include "partials/_card_orden.html" with o=o %}
+    </div>
+  {% empty %}
+    <p>No hay órdenes en cocina.</p>
+  {% endfor %}
+</div>
+{% endblock %}

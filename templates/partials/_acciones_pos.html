@@ -1,0 +1,16 @@
+{% if orden %}
+  {% if orden.items.exists %}
+    {% if orden.estado == "PENDIENTE_PAGO" %}
+      <button class="btn primary" hx-post="{% url 'pos_cobrar' %}" hx-target="#acciones-pos" hx-swap="outerHTML">Cobrar</button>
+    {% elif orden.estado == "PAGADA" %}
+      <form action="{% url 'pos_enviar_cocina' %}" method="post" style="display:inline">
+        {% csrf_token %}
+        <button class="btn primary">Enviar a cocina</button>
+      </form>
+    {% endif %}
+  {% else %}
+    <p>Agrega productos para continuar.</p>
+  {% endif %}
+{% else %}
+  <p>—</p>
+{% endif %}

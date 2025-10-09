@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}POS - ITSUR Cafetería{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col">
+    <h2>Productos</h2>
+    <form method="get">
+      {{ form.q }}
+      <button class="btn">Buscar</button>
+    </form>
+    <div style="margin-top:10px">
+      {% for p in productos %}
+        <div style="border:1px solid #ddd;padding:8px;margin-bottom:8px">
+          <b>{{ p.nombre }}</b> <span class="badge">${{ p.precio }}</span><br>
+          <form hx-post="{% url 'pos_add_item' %}" hx-target="#carrito" hx-swap="outerHTML">
+            <input type="hidden" name="producto_id" value="{{ p.id }}">
+            <input type="number" name="cantidad" value="1" min="1" style="width:60px">
+            <button class="btn">Añadir</button>
+          </form>
+        </div>
+      {% empty %}
+        <p>Sin productos</p>
+      {% endfor %}
+    </div>
+    <div>
+      {% if productos.has_other_pages %}
+        {% if productos.has_previous %}<a href="?page={{ productos.previous_page_number }}&q={{ form.q.value }}">« Anterior</a>{% endif %}
+        — Página {{ productos.number }} de {{ productos.paginator.num_pages }} —
+        {% if productos.has_next %}<a href="?page={{ productos.next_page_number }}&q={{ form.q.value }}">Siguiente »</a>{% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>Orden</h2>
+    <div style="margin-bottom:8px">
+      <a class="btn" href="{% url 'pos_nueva' %}">Nueva orden</a>
+    </div>
+    <div id="carrito">
+      {% include "partials/_carrito.html" with orden=orden %}
+    </div>
+    <div id="acciones-pos">
+      {% include "partials/_acciones_pos.html" with orden=orden %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Inicio - ITSUR Cafetería{% endblock %}
+{% block content %}
+<h2>Menú del día ({{ hoy }})</h2>
+{% if menu %}
+  <ul>
+    {% for item in menu.menuitem_set.all %}
+      <li>{{ item.producto.nombre }} - ${{ item.producto.precio }}</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No hay menú publicado para hoy.</p>
+{% endif %}
+{% endblock %}
