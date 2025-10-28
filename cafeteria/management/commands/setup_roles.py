@@ -37,3 +37,4 @@ class Command(BaseCommand):
         supervisor.permissions.set([p for p in perms if p.codename.startswith('view_')])
 
         self.stdout.write(self.style.SUCCESS("Grupos y permisos configurados."))
+ 

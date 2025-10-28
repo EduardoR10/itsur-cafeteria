@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% block title %}Catálogo (AJAX) - ITSUR Cafetería{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-diagram-2"></i> Productos por categoría (dependiente)</h5>
+      </div>
+      <div class="card-body">
+        <!-- Dependiente con Promesas encadenadas -->
+        <div class="mb-3">
+          <label class="form-label">Categoría (Promises)</label>
+          <select id="catPromises" class="form-select"></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Productos de la categoría (Promises)</label>
+          <select id="prodPromises" class="form-select"></select>
+        </div>
+
+        <hr>
+
+        <!-- Dependiente con Async/Await -->
+        <div class="mb-3">
+          <label class="form-label">Categoría (Async/Await)</label>
+          <select id="catAsync" class="form-select"></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Productos de la categoría (Async/Await)</label>
+          <select id="prodAsync" class="form-select"></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0"><i class="bi bi-hammer"></i> CRUD de Productos (fetch)</h5>
+      </div>
+      <div class="card-body">
+        <form id="formCrear" class="border rounded p-3 mb-3">
+          <h6 class="mb-3">Crear producto</h6>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label">Nombre</label>
+              <input id="crearNombre" class="form-control" placeholder="Café americano">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Precio</label>
+              <input id="crearPrecio" type="number" min="0" step="0.01" class="form-control" placeholder="25.00">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Categoría</label>
+              <select id="crearCategoria" class="form-select"></select>
+            </div>
+          </div>
+          <div class="form-check form-switch mt-2">
+            <input class="form-check-input" type="checkbox" id="crearDisponible" checked>
+            <label class="form-check-label" for="crearDisponible">Disponible</label>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-primary" type="submit">
+              <i class="bi bi-plus-circle"></i> Crear
+            </button>
+          </div>
+        </form>
+
+        <div class="border rounded p-3">
+          <h6 class="mb-3">Actualizar / Eliminar</h6>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label">Buscar por texto</label>
+              <div class="input-group">
+                <input id="buscarQ" class="form-control" placeholder="café...">
+                <button id="btnBuscar" class="btn btn-outline-primary" type="button"><i class="bi bi-search"></i> Buscar</button>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Resultados</label>
+              <select id="resultadoProductos" class="form-select"></select>
+            </div>
+          </div>
+
+          <div class="row g-2 mt-2">
+            <div class="col-md-6">
+              <label class="form-label">Nuevo nombre</label>
+              <input id="updNombre" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Nuevo precio</label>
+              <input id="updPrecio" type="number" min="0" step="0.01" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Categoría</label>
+              <select id="updCategoria" class="form-select"></select>
+            </div>
+          </div>
+
+          <div class="form-check form-switch mt-2">
+            <input class="form-check-input" type="checkbox" id="updDisponible" checked>
+            <label class="form-check-label" for="updDisponible">Disponible</label>
+          </div>
+
+          <div class="d-flex gap-2 mt-3">
+            <button id="btnActualizar" class="btn btn-success" type="button">
+              <i class="bi bi-arrow-repeat"></i> Actualizar
+            </button>
+            <button id="btnEliminar" class="btn btn-outline-danger" type="button">
+              <i class="bi bi-trash"></i> Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // CSRF token
+  function getCookie(name){
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  function toastOk(msg){ if (window.showToast) showToast(msg, 'success'); }
+  function toastWarn(msg){ if (window.showToast) showToast(msg, 'warning'); }
+  function toastErr(msg){ if (window.showToast) showToast(msg, 'danger'); }
+
+  function fillSelect(selectEl, items, getValue, getLabel){
+    selectEl.innerHTML = '';
+    items.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = getValue(it);
+      opt.textContent = getLabel(it);
+      selectEl.appendChild(opt);
+    });
+  }
+
+  async function fetchProductosByCategoria(catId){
+    const r = await fetch(`/api/productos/?categoria=${catId}`);
+    return await r.json();
+  }
+
+  async function refreshProductosSelectsIfMatch(catId){
+    const catPromises = document.getElementById('catPromises').value;
+    const catAsync = document.getElementById('catAsync').value;
+    if (String(catId) === String(catPromises)) {
+      const productos = await fetchProductosByCategoria(catId);
+      fillSelect(document.getElementById('prodPromises'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
+    }
+    if (String(catId) === String(catAsync)) {
+      const productos = await fetchProductosByCategoria(catId);
+      fillSelect(document.getElementById('prodAsync'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
+    }
+  }
+
+  function cargarCategoriasPromesas(){
+    return fetch('/api/categorias/')
+      .then(r => r.json())
+      .then(categorias => {
+        fillSelect(document.getElementById('catPromises'), categorias, c => c.id, c => c.nombre);
+        fillSelect(document.getElementById('catAsync'), categorias, c => c.id, c => c.nombre);
+        fillSelect(document.getElementById('crearCategoria'), categorias, c => c.id, c => c.nombre);
+        fillSelect(document.getElementById('updCategoria'), categorias, c => c.id, c => c.nombre);
+        return categorias;
+      })
+      .then(categorias => {
+        const catId = categorias.length ? categorias[0].id : null;
+        if (!catId) return [];
+        return fetch(`/api/productos/?categoria=${catId}`)
+          .then(r => r.json())
+          .then(productos => {
+            fillSelect(document.getElementById('prodPromises'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
+            return productos;
+          });
+      })
+      .catch(() => toastErr('Error cargando categorías/productos'));
+  }
+
+  async function cargarProductosPorCategoriaAsync(catId){
+    try{
+      const r = await fetch(`/api/productos/?categoria=${catId}`);
+      const productos = await r.json();
+      fillSelect(document.getElementById('prodAsync'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
+    }catch{
+      toastErr('Error cargando productos (async)');
+    }
+  }
+
+  document.getElementById('formCrear').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const body = {
+      nombre: document.getElementById('crearNombre').value.trim(),
+      precio: parseFloat(document.getElementById('crearPrecio').value || '0'),
+      categoria: parseInt(document.getElementById('crearCategoria').value),
+      disponible: document.getElementById('crearDisponible').checked
+    };
+    try{
+      const r = await fetch('/api/productos/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrftoken},
+        body: JSON.stringify(body)
+      });
+      if(!r.ok) throw await r.json();
+      const nuevo = await r.json();
+      toastOk('Producto creado');
+      document.getElementById('crearNombre').value = '';
+      document.getElementById('crearPrecio').value = '';
+      document.getElementById('crearDisponible').checked = true;
+      await refreshProductosSelectsIfMatch(nuevo.categoria);
+    }catch{
+      toastErr('Error al crear producto');
+    }
+  });
+
+  document.getElementById('btnBuscar').addEventListener('click', async ()=>{
+    const q = document.getElementById('buscarQ').value.trim();
+    try{
+      const r = await fetch('/api/productos/?q=' + encodeURIComponent(q));
+      const productos = await r.json();
+      fillSelect(document.getElementById('resultadoProductos'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
+    }catch{
+      toastErr('Error en búsqueda');
+    }
+  });
+
+  document.getElementById('resultadoProductos').addEventListener('change', async (e)=>{
+    const id = e.target.value;
+    if(!id) return;
+    try{
+      const r = await fetch(`/api/productos/${id}/`);
+      if(!r.ok) return;
+      const p = await r.json();
+      document.getElementById('updNombre').value = p.nombre;
+      document.getElementById('updPrecio').value = p.precio;
+      document.getElementById('updCategoria').value = p.categoria;
+      document.getElementById('updDisponible').checked = !!p.disponible;
+    }catch{}
+  });
+
+  document.getElementById('btnActualizar').addEventListener('click', async ()=>{
+    const id = document.getElementById('resultadoProductos').value;
+    if(!id) return toastWarn('Selecciona un producto');
+    const body = {
+      nombre: document.getElementById('updNombre').value.trim(),
+      precio: parseFloat(document.getElementById('updPrecio').value || '0'),
+      categoria: parseInt(document.getElementById('updCategoria').value),
+      disponible: document.getElementById('updDisponible').checked
+    };
+    try{
+      const r = await fetch(`/api/productos/${id}/`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrftoken},
+        body: JSON.stringify(body)
+      });
+      if(!r.ok) throw await r.json();
+      toastOk('Producto actualizado');
+      await refreshProductosSelectsIfMatch(body.categoria);
+      const opt = document.querySelector(`#resultadoProductos option[value="${id}"]`);
+      if(opt) opt.textContent = `${body.nombre} ($${Number(body.precio).toFixed(2)})`;
+    }catch{
+      toastErr('Error al actualizar');
+    }
+  });
+
+  document.getElementById('btnEliminar').addEventListener('click', async ()=>{
+    const id = document.getElementById('resultadoProductos').value;
+    if(!id) return toastWarn('Selecciona un producto');
+    try{
+      const r = await fetch(`/api/productos/${id}/`, {
+        method: 'DELETE',
+        headers: {'X-CSRFToken': csrftoken}
+      });
+      if(r.status === 204){
+        toastOk('Producto eliminado');
+        document.querySelector(`#resultadoProductos option[value="${id}"]`)?.remove();
+        const catPromises = document.getElementById('catPromises').value;
+        const catAsync = document.getElementById('catAsync').value;
+        await refreshProductosSelectsIfMatch(catPromises);
+        if (catAsync !== catPromises) await refreshProductosSelectsIfMatch(catAsync);
+      }else{
+        toastErr('No se pudo eliminar');
+      }
+    }catch{
+      toastErr('Error al eliminar');
+    }
+  });
+
+  document.getElementById('catAsync').addEventListener('change', (e)=>{
+    cargarProductosPorCategoriaAsync(e.target.value);
+  });
+
+  cargarCategoriasPromesas().then(()=>{
+    const catId = document.getElementById('catAsync').value;
+    if(catId) cargarProductosPorCategoriaAsync(catId);
+  });
+</script>
+
+{% endblock %}

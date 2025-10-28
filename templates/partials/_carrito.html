@@ -1,22 +1,68 @@
-{% if orden %}
-  <p>Folio: <b>{{ orden.folio }}</b> | Estado: <b>{{ orden.get_estado_display }}</b></p>
-  <table>
-    <thead><tr><th>Producto</th><th>Cant</th><th>PU</th><th>Subtotal</th><th></th></tr></thead>
-    <tbody>
-      {% for it in orden.items.all %}
-        <tr>
-          <td>{{ it.producto.nombre }}</td>
-          <td>{{ it.cantidad }}</td>
-          <td>${{ it.precio_unitario }}</td>
-          <td>${{ it.subtotal }}</td>
-          <td>
-            <a class="btn" hx-get="{% url 'pos_del_item' it.id %}" hx-target="#carrito" hx-swap="outerHTML">Quitar</a>
-          </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-    <tfoot><tr><th colspan="3" style="text-align:right">TOTAL</th><th>${{ orden.total }}</th><th></th></tr></tfoot>
-  </table>
-{% else %}
-  <p>No hay orden activa. Crea una nueva.</p>
-{% endif %}
+<div id="carrito">
+  {% if orden %}
+    <div class="px-3 pt-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <span class="text-muted small">Folio</span>
+          <span class="badge text-bg-warning text-dark ms-1">{{ orden.folio }}</span>
+        </div>
+        <div>
+          <span class="text-muted small">Estado</span>
+          <span class="badge text-bg-primary ms-1">{{ orden.get_estado_display }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Producto</th>
+            <th style="width:90px">Cant</th>
+            <th style="width:110px">PU</th>
+            <th style="width:120px">Subtotal</th>
+            <th style="width:70px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in orden.items.all %}
+            <tr>
+              <td class="fw-semibold">{{ it.producto.nombre }}</td>
+              <td>{{ it.cantidad }}</td>
+              <td>${{ it.precio_unitario }}</td>
+              <td class="fw-semibold">${{ it.subtotal }}</td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-outline-danger"
+                   hx-get="{% url 'pos_del_item' it.id %}"
+                   hx-target="#carrito" hx-swap="outerHTML">
+                  <i class="bi bi-trash"></i>
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+          <tr>
+            <th colspan="3" class="text-end">TOTAL</th>
+            <th class="fs-5">${{ orden.total }}</th>
+            <th></th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    {# Solo en respuestas htmx: refresca acciones con OOB para no duplicarlas en carga completa #}
+    {% if hx %}
+      <div id="acciones-pos" hx-swap-oob="true">
+        {% include "partials/_acciones_pos.html" with orden=orden %}
+      </div>
+    {% endif %}
+
+  {% else %}
+    <div class="p-3">
+      <div class="alert alert-info mb-0">
+        No hay orden activa. Da clic en <b>Nueva orden</b> para comenzar.
+      </div>
+    </div>
+  {% endif %}
+</div>

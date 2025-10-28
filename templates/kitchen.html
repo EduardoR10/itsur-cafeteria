@@ -1,14 +1,68 @@
 {% extends "base.html" %}
 {% block title %}Cocina - ITSUR Cafetería{% endblock %}
+
 {% block content %}
-<h2>Tablero de cocina</h2>
-<div class="row">
-  {% for o in ordenes %}
-    <div class="col" id="orden-{{ o.id }}">
-      {% include "partials/_card_orden.html" with o=o %}
-    </div>
-  {% empty %}
-    <p>No hay órdenes en cocina.</p>
-  {% endfor %}
-</div>
+<h3 class="mb-4 text-primary"><i class="bi bi-egg-fried"></i> Órdenes en cocina</h3>
+
+{% if ordenes %}
+  <div class="row g-4">
+    {% for o in ordenes %}
+      <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header d-flex justify-content-between align-items-center 
+            {% if o.estado == 'EN_PREPARACION' %}bg-warning text-dark
+            {% elif o.estado == 'LISTA' %}bg-success text-white
+            {% else %}bg-primary text-white{% endif %}">
+            <span class="fw-bold">Folio {{ o.folio }}</span>
+            <span class="badge bg-light text-dark">{{ o.get_estado_display }}</span>
+          </div>
+          <div class="card-body">
+            <ul class="list-group list-group-flush small mb-3">
+              {% for item in o.items.all %}
+                <li class="list-group-item d-flex justify-content-between">
+                  <span>{{ item.cantidad }} × {{ item.producto.nombre }}</span>
+                  <span class="fw-semibold">${{ item.subtotal }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-end">Total: ${{ o.total }}</span>
+              <div class="btn-group">
+                {% if o.estado == 'EN_COLA' %}
+                  <form hx-post="{% url 'kitchen_cambiar_estado' o.id 'EN_PREPARACION' %}"
+                        hx-target="closest .card"
+                        hx-swap="outerHTML">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-primary">
+                      <i class="bi bi-fire"></i> Iniciar
+                    </button>
+                  </form>
+                {% elif o.estado == 'EN_PREPARACION' %}
+                  <form hx-post="{% url 'kitchen_cambiar_estado' o.id 'LISTA' %}"
+                        hx-target="closest .card"
+                        hx-swap="outerHTML">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-success">
+                      <i class="bi bi-check2-circle"></i> Marcar listo
+                    </button>
+                  </form>
+                {% elif o.estado == 'LISTA' %}
+                  <span class="badge text-bg-success"><i class="bi bi-check2-circle"></i> Lista</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="card-footer small text-muted">
+            Creada: {{ o.creado|date:"H:i" }} por {{ o.creada_por.username }}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info">
+    <i class="bi bi-emoji-neutral"></i> No hay órdenes activas en cocina.
+  </div>
+{% endif %}
 {% endblock %}
