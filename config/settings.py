@@ -14,6 +14,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions','django.contrib.messages','django.contrib.staticfiles',
     'rest_framework',
     'cafeteria.apps.CafeteriaConfig',
+    
 ]
 
 
@@ -82,3 +83,17 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
     ]
 }
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/'
+
+
+SESSION_COOKIE_SECURE = False   
+CSRF_COOKIE_SECURE = False      
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True  
+X_FRAME_OPTIONS = 'DENY'

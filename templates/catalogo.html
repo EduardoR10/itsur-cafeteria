@@ -6,28 +6,15 @@
   <div class="col-lg-6">
     <div class="card shadow-sm border-0">
       <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="bi bi-diagram-2"></i> Productos por categoría (dependiente)</h5>
+        <h5 class="mb-0"><i class="bi bi-diagram-2"></i> Productos por categoría</h5>
       </div>
       <div class="card-body">
-        <!-- Dependiente con Promesas encadenadas -->
         <div class="mb-3">
-          <label class="form-label">Categoría (Promises)</label>
-          <select id="catPromises" class="form-select"></select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Productos de la categoría (Promises)</label>
-          <select id="prodPromises" class="form-select"></select>
-        </div>
-
-        <hr>
-
-        <!-- Dependiente con Async/Await -->
-        <div class="mb-3">
-          <label class="form-label">Categoría (Async/Await)</label>
+          <label class="form-label">Categoría</label>
           <select id="catAsync" class="form-select"></select>
         </div>
         <div class="mb-3">
-          <label class="form-label">Productos de la categoría (Async/Await)</label>
+          <label class="form-label">Productos de la categoría</label>
           <select id="prodAsync" class="form-select"></select>
         </div>
       </div>
@@ -37,7 +24,7 @@
   <div class="col-lg-6">
     <div class="card shadow-sm border-0">
       <div class="card-header bg-secondary text-white">
-        <h5 class="mb-0"><i class="bi bi-hammer"></i> CRUD de Productos (fetch)</h5>
+        <h5 class="mb-0"><i class="bi bi-hammer"></i> CRUD de Productos</h5>
       </div>
       <div class="card-body">
         <form id="formCrear" class="border rounded p-3 mb-3">
@@ -113,6 +100,9 @@
           </div>
         </div>
       </div>
+      <div class="card-footer bg-light small text-muted">
+        Escrituras requieren usuario con permisos (SessionAuth). Los errores se mostrarán como toasts.
+      </div>
     </div>
   </div>
 </div>
@@ -140,56 +130,29 @@
     });
   }
 
-  async function fetchProductosByCategoria(catId){
-    const r = await fetch(`/api/productos/?categoria=${catId}`);
+  async function fetchJSON(url){
+    const r = await fetch(url);
+    if(!r.ok) throw new Error('HTTP ' + r.status);
     return await r.json();
   }
 
-  async function refreshProductosSelectsIfMatch(catId){
-    const catPromises = document.getElementById('catPromises').value;
-    const catAsync = document.getElementById('catAsync').value;
-    if (String(catId) === String(catPromises)) {
-      const productos = await fetchProductosByCategoria(catId);
-      fillSelect(document.getElementById('prodPromises'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
-    }
-    if (String(catId) === String(catAsync)) {
-      const productos = await fetchProductosByCategoria(catId);
-      fillSelect(document.getElementById('prodAsync'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
-    }
-  }
-
-  function cargarCategoriasPromesas(){
-    return fetch('/api/categorias/')
-      .then(r => r.json())
-      .then(categorias => {
-        fillSelect(document.getElementById('catPromises'), categorias, c => c.id, c => c.nombre);
-        fillSelect(document.getElementById('catAsync'), categorias, c => c.id, c => c.nombre);
-        fillSelect(document.getElementById('crearCategoria'), categorias, c => c.id, c => c.nombre);
-        fillSelect(document.getElementById('updCategoria'), categorias, c => c.id, c => c.nombre);
-        return categorias;
-      })
-      .then(categorias => {
-        const catId = categorias.length ? categorias[0].id : null;
-        if (!catId) return [];
-        return fetch(`/api/productos/?categoria=${catId}`)
-          .then(r => r.json())
-          .then(productos => {
-            fillSelect(document.getElementById('prodPromises'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
-            return productos;
-          });
-      })
-      .catch(() => toastErr('Error cargando categorías/productos'));
+  async function cargarCategorias(){
+    const categorias = await fetchJSON('/api/categorias/');
+    fillSelect(document.getElementById('catAsync'), categorias, c => c.id, c => c.nombre);
+    fillSelect(document.getElementById('crearCategoria'), categorias, c => c.id, c => c.nombre);
+    fillSelect(document.getElementById('updCategoria'), categorias, c => c.id, c => c.nombre);
+    const first = categorias[0]?.id;
+    if(first) await cargarProductosPorCategoriaAsync(first);
   }
 
   async function cargarProductosPorCategoriaAsync(catId){
-    try{
-      const r = await fetch(`/api/productos/?categoria=${catId}`);
-      const productos = await r.json();
-      fillSelect(document.getElementById('prodAsync'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
-    }catch{
-      toastErr('Error cargando productos (async)');
-    }
+    const productos = await fetchJSON(`/api/productos/?categoria=${catId}`);
+    fillSelect(document.getElementById('prodAsync'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
   }
+
+  document.getElementById('catAsync').addEventListener('change', async (e)=>{
+    if(e.target.value) await cargarProductosPorCategoriaAsync(e.target.value);
+  });
 
   document.getElementById('formCrear').addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -211,7 +174,8 @@
       document.getElementById('crearNombre').value = '';
       document.getElementById('crearPrecio').value = '';
       document.getElementById('crearDisponible').checked = true;
-      await refreshProductosSelectsIfMatch(nuevo.categoria);
+      const selCat = document.getElementById('catAsync').value;
+      if(String(nuevo.categoria) === String(selCat)) await cargarProductosPorCategoriaAsync(selCat);
     }catch{
       toastErr('Error al crear producto');
     }
@@ -220,8 +184,7 @@
   document.getElementById('btnBuscar').addEventListener('click', async ()=>{
     const q = document.getElementById('buscarQ').value.trim();
     try{
-      const r = await fetch('/api/productos/?q=' + encodeURIComponent(q));
-      const productos = await r.json();
+      const productos = await fetchJSON('/api/productos/?q=' + encodeURIComponent(q));
       fillSelect(document.getElementById('resultadoProductos'), productos, p => p.id, p => `${p.nombre} ($${Number(p.precio).toFixed(2)})`);
     }catch{
       toastErr('Error en búsqueda');
@@ -232,9 +195,7 @@
     const id = e.target.value;
     if(!id) return;
     try{
-      const r = await fetch(`/api/productos/${id}/`);
-      if(!r.ok) return;
-      const p = await r.json();
+      const p = await fetchJSON(`/api/productos/${id}/`);
       document.getElementById('updNombre').value = p.nombre;
       document.getElementById('updPrecio').value = p.precio;
       document.getElementById('updCategoria').value = p.categoria;
@@ -259,7 +220,8 @@
       });
       if(!r.ok) throw await r.json();
       toastOk('Producto actualizado');
-      await refreshProductosSelectsIfMatch(body.categoria);
+      const selCat = document.getElementById('catAsync').value;
+      if(String(body.categoria) === String(selCat)) await cargarProductosPorCategoriaAsync(selCat);
       const opt = document.querySelector(`#resultadoProductos option[value="${id}"]`);
       if(opt) opt.textContent = `${body.nombre} ($${Number(body.precio).toFixed(2)})`;
     }catch{
@@ -278,10 +240,8 @@
       if(r.status === 204){
         toastOk('Producto eliminado');
         document.querySelector(`#resultadoProductos option[value="${id}"]`)?.remove();
-        const catPromises = document.getElementById('catPromises').value;
-        const catAsync = document.getElementById('catAsync').value;
-        await refreshProductosSelectsIfMatch(catPromises);
-        if (catAsync !== catPromises) await refreshProductosSelectsIfMatch(catAsync);
+        const selCat = document.getElementById('catAsync').value;
+        if(selCat) await cargarProductosPorCategoriaAsync(selCat);
       }else{
         toastErr('No se pudo eliminar');
       }
@@ -290,14 +250,6 @@
     }
   });
 
-  document.getElementById('catAsync').addEventListener('change', (e)=>{
-    cargarProductosPorCategoriaAsync(e.target.value);
-  });
-
-  cargarCategoriasPromesas().then(()=>{
-    const catId = document.getElementById('catAsync').value;
-    if(catId) cargarProductosPorCategoriaAsync(catId);
-  });
+  (async () => { try{ await cargarCategorias(); }catch{ toastErr('Error inicial'); } })();
 </script>
-
 {% endblock %}

@@ -1,40 +1,62 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, Permission
-from django.apps import apps
+from django.contrib.contenttypes.models import ContentType
+from cafeteria.models import Categoria, Producto, MenuDia, MenuItem, Orden, OrdenItem
+
+def perms_for(model, actions=('view',)):
+    ct = ContentType.objects.get_for_model(model)
+    out = []
+    for act in actions:
+        codename = f'{act}_{model._meta.model_name}'
+        try:
+            out.append(Permission.objects.get(content_type=ct, codename=codename))
+        except Permission.DoesNotExist:
+            pass
+    return out
 
 class Command(BaseCommand):
-    help = "Crea grupos: alumno, cajero, cocinero, supervisor con permisos básicos."
+    help = "Crea grupos y asigna permisos del módulo cafetería"
 
-    def handle(self, *args, **options):
-        grupos = ['alumno', 'cajero', 'cocinero', 'supervisor']
-        for g in grupos:
-            Group.objects.get_or_create(name=g)
+    def handle(self, *args, **kwargs):
+        grupos = {
+            # Alumno: solo lectura de catálogo/menú
+            'Alumno': (
+                perms_for(Categoria, ('view',)) +
+                perms_for(Producto, ('view',)) +
+                perms_for(MenuDia, ('view',)) +
+                perms_for(MenuItem, ('view',))
+            ),
+            # Cajero: operar POS (crear/cambiar órdenes), ver catálogo
+            'Cajero': (
+                perms_for(Orden, ('add', 'change', 'view')) +
+                perms_for(OrdenItem, ('add', 'change', 'delete', 'view')) +
+                perms_for(Producto, ('view',)) +
+                perms_for(Categoria, ('view',)) +
+                perms_for(MenuDia, ('view',)) +
+                perms_for(MenuItem, ('view',))
+            ),
+            # Cocinero: cambiar estado de órdenes, ver catálogo
+            'Cocinero': (
+                perms_for(Orden, ('change', 'view')) +
+                perms_for(OrdenItem, ('view',)) +
+                perms_for(Producto, ('view',)) +
+                perms_for(MenuDia, ('view',)) +
+                perms_for(MenuItem, ('view',))
+            ),
+            # Supervisor: administra catálogos y menús
+            'Supervisor': (
+                perms_for(Categoria, ('add','change','delete','view')) +
+                perms_for(Producto, ('add','change','delete','view')) +
+                perms_for(MenuDia, ('add','change','delete','view')) +
+                perms_for(MenuItem, ('add','change','delete','view')) +
+                perms_for(Orden, ('view',)) +
+                perms_for(OrdenItem, ('view',))
+            ),
+        }
 
-        # Permisos mínimos
-        Producto = apps.get_model('cafeteria','Producto')
-        Orden = apps.get_model('cafeteria','Orden')
+        for nombre, permisos in grupos.items():
+            g, _ = Group.objects.get_or_create(name=nombre)
+            g.permissions.set(permisos)
+            self.stdout.write(self.style.SUCCESS(f'Grupo {nombre} listo ({len(permisos)} permisos)'))
 
-        perms = Permission.objects.filter(content_type__app_label='cafeteria')
-        by_codename = {p.codename: p for p in perms}
-
-        alumno = Group.objects.get(name='alumno')
-        cajero = Group.objects.get(name='cajero')
-        cocinero = Group.objects.get(name='cocinero')
-        supervisor = Group.objects.get(name='supervisor')
-
-        # Cajero: add/change Orden y OrdenItem, ver productos
-        asignar = [
-            'add_orden','change_orden','view_orden',
-            'add_ordenitem','change_ordenitem','delete_ordenitem','view_ordenitem',
-            'view_producto'
-        ]
-        cajero.permissions.set([by_codename[c] for c in asignar if c in by_codename])
-
-        # Cocinero: change/view Orden
-        cocinero.permissions.set([by_codename[c] for c in ['change_orden','view_orden'] if c in by_codename])
-
-        # Supervisor: view todo
-        supervisor.permissions.set([p for p in perms if p.codename.startswith('view_')])
-
-        self.stdout.write(self.style.SUCCESS("Grupos y permisos configurados."))
- 
+        self.stdout.write(self.style.SUCCESS('Roles y permisos configurados.'))

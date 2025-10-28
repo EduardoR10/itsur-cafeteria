@@ -70,10 +70,67 @@
         {% endif %}
       </div>
     </div>
+    <!-- RESUMEN DEL DÍA (Promises) -->
+     <br>
+     <br>
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Resumen del día</h6>
+        <small class="text-muted">Actualizado: <span id="st_updated">—</span></small>
+      </div>
+      <div class="card-body">
+        <div class="row text-center g-3">
+          <div class="col-6">
+            <div class="border rounded-3 p-2">
+              <div class="small text-muted">Ventas</div>
+              <div class="fs-5 fw-bold" id="st_total">$0.00</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="border rounded-3 p-2">
+              <div class="small text-muted">Órdenes hoy</div>
+              <div class="fs-5 fw-bold" id="st_ordenes">0</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="border rounded-3 p-2">
+              <div class="small text-muted">En cola</div>
+              <div class="fw-bold" id="st_cola">0</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="border rounded-3 p-2">
+              <div class="small text-muted">Prep.</div>
+              <div class="fw-bold" id="st_prep">0</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="border rounded-3 p-2">
+              <div class="small text-muted">Listas</div>
+              <div class="fw-bold" id="st_listas">0</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="border rounded-3 p-2">
+              <div class="small text-muted">Entregadas</div>
+              <div class="fw-bold" id="st_entregadas">0</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="border rounded-3 p-2">
+              <div class="small text-muted">Pend. pago</div>
+              <div class="fw-bold" id="st_pend">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- === Orden actual === -->
+  <!-- === Columna derecha === -->
   <div class="col-lg-5">
+
+    <!-- ORDEN ACTUAL -->
     <div class="card shadow-sm border-0">
       <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-receipt"></i> Orden actual</h5>
@@ -81,15 +138,36 @@
           <i class="bi bi-plus-circle"></i> Nueva orden
         </a>
       </div>
-
       <div class="card-body p-0" id="carrito">
         {% include "partials/_carrito.html" with orden=orden %}
       </div>
-
       <div class="card-footer bg-light" id="acciones-pos">
         {% include "partials/_acciones_pos.html" with orden=orden %}
       </div>
     </div>
+
+    
+
   </div>
 </div>
+
+<script>
+  function loadStats(){
+    return fetch('/api/ordenes/estadisticas/')
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById('st_total').textContent = '$' + Number(d.total_ventas_hoy || 0).toFixed(2);
+        document.getElementById('st_ordenes').textContent = d.total_ordenes_hoy ?? 0;
+        document.getElementById('st_cola').textContent = d.en_cola ?? 0;
+        document.getElementById('st_prep').textContent = d.en_preparacion ?? 0;
+        document.getElementById('st_listas').textContent = d.listas ?? 0;
+        document.getElementById('st_entregadas').textContent = d.entregadas ?? 0;
+        document.getElementById('st_pend').textContent = d.pendientes_pago ?? 0;
+        document.getElementById('st_updated').textContent = new Date().toLocaleTimeString();
+      })
+      .catch(() => { if(window.showToast) showToast('No se pudo cargar el resumen', 'danger'); });
+  }
+  loadStats();
+  setInterval(loadStats, 5000);
+</script>
 {% endblock %}

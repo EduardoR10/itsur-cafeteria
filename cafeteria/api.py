@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Prefetch
+from django.db.models import Sum, Count
 
 from .models import (
     Categoria, Producto,
@@ -70,6 +71,30 @@ class OrdenViewSet(viewsets.ModelViewSet):
     def items(self, request, pk=None):
         orden = self.get_object()
         data = OrdenItemReadSerializer(orden.items.all(), many=True).data
+        return Response(data)
+    
+    @action(detail=False, methods=['get'])
+    def estadisticas(self, request):
+        hoy = timezone.localdate()
+        qs_hoy = Orden.objects.filter(creado__date=hoy)
+
+        estados = Orden.Estado
+        total_ventas_hoy = (
+            qs_hoy.exclude(estado=estados.PENDIENTE_PAGO)
+                 .aggregate(s=Sum('total'))['s'] or 0
+        )
+
+        data = {
+            "fecha": str(hoy),
+            "total_ventas_hoy": float(total_ventas_hoy),
+            "total_ordenes_hoy": qs_hoy.count(),
+            "pendientes_pago": qs_hoy.filter(estado=estados.PENDIENTE_PAGO).count(),
+            "pagadas": qs_hoy.filter(estado=estados.PAGADA).count(),
+            "en_cola": qs_hoy.filter(estado=estados.EN_COLA).count(),
+            "en_preparacion": qs_hoy.filter(estado=estados.EN_PREPARACION).count(),
+            "listas": qs_hoy.filter(estado=estados.LISTA).count(),
+            "entregadas": qs_hoy.filter(estado=estados.ENTREGADA).count(),
+        }
         return Response(data)
 
 class OrdenItemViewSet(viewsets.ModelViewSet):
