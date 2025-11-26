@@ -180,3 +180,8 @@ def kitchen_cambiar_estado(request, orden_id, nuevo_estado):
 @login_required
 def catalogo(request):
     return render(request, 'catalogo.html')
+
+@login_required
+@permission_required('cafeteria.view_orden', raise_exception=True)
+def reporte_ordenes(request):
+    return render(request, 'reportes_ordenes.html')

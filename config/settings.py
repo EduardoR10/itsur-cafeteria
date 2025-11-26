@@ -34,13 +34,20 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [{
     'BACKEND': 'django.template.backends.django.DjangoTemplates',
     'DIRS': [BASE_DIR / 'templates'],
-    'APP_DIRS': True,
-    'OPTIONS': {'context_processors':[
-        'django.template.context_processors.debug',
-        'django.template.context_processors.request',
-        'django.contrib.auth.context_processors.auth',
-        'django.contrib.messages.context_processors.messages',
-    ],},
+    'OPTIONS': {
+        'loaders': [
+            ('django.template.loaders.cached.Loader', [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
+            ]),
+        ],
+        'context_processors': [
+            'django.template.context_processors.debug',
+            'django.template.context_processors.request',
+            'django.contrib.auth.context_processors.auth',
+            'django.contrib.messages.context_processors.messages',
+        ],
+    },
 }]
 
 WSGI_APPLICATION = 'config.wsgi.application'
@@ -53,6 +60,7 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
+        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=60),
     }
 }
 
@@ -88,12 +96,44 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+REDIS_URL = env('REDIS_URL', default=None)
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,  # e.g. redis://:password@host:6379/1
+        }
+    }
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+else:
+    # Fallback for local development when Redis is not available
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'default-locmem',
+        }
+    }
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 
+DEBUG = env.bool('DEBUG', default=False)
+SECRET_KEY = env('SECRET_KEY')
+ALLOWED_HOSTS = [h.strip() for h in env('ALLOWED_HOSTS').split(',')]
 
-SESSION_COOKIE_SECURE = False   
-CSRF_COOKIE_SECURE = False      
-SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_BROWSER_XSS_FILTER = True  
-X_FRAME_OPTIONS = 'DENY'
+
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
+if not DEBUG:
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SESSION_COOKIE_SECURE = True  
+    CSRF_COOKIE_SECURE = True   
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True  
+    X_FRAME_OPTIONS = 'DENY'
+    #SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+    #SECURE_HSTS_SECONDS = 300
+    #SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True

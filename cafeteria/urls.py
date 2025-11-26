@@ -13,7 +13,7 @@ urlpatterns = [
     path('pos/cobrar/', views.pos_cobrar, name='pos_cobrar'),
     path('pos/enviar-cocina/', views.pos_enviar_cocina, name='pos_enviar_cocina'),
 
-    # CocinaS
+    # Cocina
     path('cocina/', views.kitchen, name='kitchen'),
     path('cocina/cambiar/<int:orden_id>/<str:nuevo_estado>/',
          views.kitchen_cambiar_estado, name='kitchen_cambiar_estado'),
@@ -23,4 +23,6 @@ urlpatterns = [
     path('api/', include(api_router.urls)),
 
     path('catalogo/', views.catalogo, name='catalogo'),
+
+     path('reportes/ordenes/', views.reporte_ordenes, name='reportes_ordenes'),
 ]
