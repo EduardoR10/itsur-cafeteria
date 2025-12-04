@@ -25,4 +25,8 @@ urlpatterns = [
     path('catalogo/', views.catalogo, name='catalogo'),
 
      path('reportes/ordenes/', views.reporte_ordenes, name='reportes_ordenes'),
+
+     path('register/', views.register, name='register'),
+     
 ]
+
